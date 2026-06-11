@@ -1,0 +1,38 @@
+name: Build Matter Wireshark Dissector
+on:
+  push:
+    branches: [ "build-matter-dll" ]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install python3 git -y
+
+      - name: Download Wireshark 3.6.24
+        run: |
+          Invoke-WebRequest -Uri "https://1.as.dl.wireshark.org/win64/all-versions/Wireshark-win64-3.6.24.exe" -OutFile "Wireshark.exe"
+          .\Wireshark.exe /S /D=C:\Wireshark36
+
+      - name: Build matter.dll
+        run: |
+          cd src/tools/wireshark
+          mkdir build
+          cd build
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DWIRESHARK_DIR="C:\Wireshark36" `
+            -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --config Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: matter.dll
+          path: src/tools/wireshark/build/Release/matter.dll
